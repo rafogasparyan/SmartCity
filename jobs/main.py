@@ -18,8 +18,8 @@ BIRMINGHAM_COORDINATES = {
 }
 
 # Calculate the movement increment
-LATITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["latitude"] - LONDON_COORDINATES["latitude"]) / 1000
-LONGITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["longitude"] - LONDON_COORDINATES["longitude"]) / 1000
+LATITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["latitude"] - LONDON_COORDINATES["latitude"]) / 100
+LONGITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["longitude"] - LONDON_COORDINATES["longitude"]) / 100
 
 # Environment variables for configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -121,16 +121,19 @@ def generate_vehicle_data(device_id):
         "fuelType": "Hybrid"
     }
 
+
 def json_serializer(obj):
     if isinstance(obj, uuid.UUID):
         return str(obj)
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serialaizable")
+
 
 def delivery_report(err, msg):
     if err is not None:
         print(f"Message delivery failed: {err}")
     else:
         print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+
 
 def produce_data_to_kafka(producer, topic, data):
     producer.produce(
@@ -165,7 +168,7 @@ def simulate_journey(producer, device_id):
         produce_data_to_kafka(producer, TRAFFIC_TOPIC, traffic_camera_data)
         produce_data_to_kafka(producer, WEATHER_TOPIC, weather_data)
         produce_data_to_kafka(producer, EMERGENCY_TOPIC, emergency_incident_data)
-        time.sleep(3)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
@@ -180,7 +183,7 @@ if __name__ == "__main__":
         simulate_journey(producer, "Vehicle_CodeWithYu-123")
 
     except KeyboardInterrupt:
-        print("Simultaion ended by the user")
+        print("Simulation ended by the user")
     except Exception as e:
         traceback.print_exc()
         # print(f"Unexpected Error occurred: {e}")
