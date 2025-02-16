@@ -10,13 +10,13 @@ x-spark-common: &spark-common
   environment:
     SPARK_MODE: WORKER
     SPARK_WORKER_CORES: 2
-    SPARKS_WORKER_MEMORY: 1g
+    SPARK_WORKER_MEMORY: 1g
     SPARK_MASTER_URL: spark://spark-master:7077
   networks:
     - datamasterylab
 
 services:
-  zookepper:
+  zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     hostname: zookeeper
     container_name: zookeeper
@@ -37,7 +37,7 @@ services:
     hostname: broker
     container_name: broker
     depends_on:
-      zookepper:
+      zookeeper:
         condition: service_healthy
     ports:
       - "9092:9092"
@@ -75,7 +75,7 @@ services:
     command: bin/spark-class org.apache.spark.deploy.master.Master
     ports:
       - "9090:8080"
-      -  "7077:7077"
+      - "7077:7077"
     networks:
       - datamasterylab
   spark-worker-1:
