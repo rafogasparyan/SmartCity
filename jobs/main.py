@@ -6,7 +6,11 @@ import uuid
 from confluent_kafka import SerializingProducer
 import simplejson as json
 from datetime import datetime, timedelta
+from weather_service import WeatherService
 import random
+
+
+weather_service = WeatherService()
 
 LONDON_COORDINATES = {
     "latitude": 51.5074,
@@ -42,18 +46,35 @@ def get_next_time():
 
 
 def generate_weather_data(device_id, timestamp, location):
-    return {
-        "id": uuid.uuid4(),
-        "deviceId": device_id,
-        "location": location,
-        "timestamp": timestamp,
-        "temperature": random.uniform(-5, 26),
-        "weatherCondition": random.choice(["Sunny", "Cloudy", "Rain", "Snow"]),
-        "precipitation": random.uniform(0, 25),
-        "windSpeed": random.uniform(0, 100),
-        "humidity": random.randint(0, 100),  # percentage
-        "airQualityIndex": random.uniform(0, 500)  # AQL Value goes here
-    }
+    # Fetch real time weather data from Open-Mateo
+    weather_data = weather_service.get_weather(location["latitude"], location["longitude"])
+
+    if weather_data:
+        return {
+            "id": uuid.uuid4(),
+            "deviceId": device_id,
+            "location": location,
+            "timestamp": timestamp,
+            "temperature": weather_data["temperature"],
+            "weatherCondition": weather_data["weatherCondition"],
+            # "precipitation": weather_data["precipitation"],
+            "windSpeed": weather_data["windSpeed"],
+            # "humidity": weather_data["humidity"],
+            # "airQualityIndex": weather_data["airQualityIndex"]
+        }
+    else:
+        return {
+            "id": uuid.uuid4(),
+            "deviceId": device_id,
+            "location": location,
+            "timestamp": timestamp,
+            "temperature": random.uniform(-5, 26),
+            "weatherCondition": random.choice(["Sunny", "Cloudy", "Rain", "Snow"]),
+            "precipitation": random.uniform(0, 25),
+            "windSpeed": random.uniform(0, 100),
+            "humidity": random.randint(0, 100),  # percentage
+            "airQualityIndex": random.uniform(0, 500)  # AQL Value goes here
+        }
 
 
 def generate_emergency_incident_data(device_id, timestamp, location):
