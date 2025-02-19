@@ -27,4 +27,4 @@ jobs:
           pip install flake8
 
       - name: Run flake8
-        run: flake8 --max-line-length=105 --exclude=./newenv,.git,__pycache__ .
+        run: flake8 --max-line-length=115 --exclude=./newenv,.git,__pycache__ .

@@ -176,8 +176,8 @@ def simulate_journey(producer, device_id):
         emergency_incident_data = generate_emergency_incident_data(device_id, vehicle_data["timestamp"],
                                                                    vehicle_data["location"])
 
-        if (vehicle_data["location"][0] >= BIRMINGHAM_COORDINATES['latitude'] and vehicle_data["location"][1] <=
-                BIRMINGHAM_COORDINATES["longitude"]):
+        if (vehicle_data["location"][0] >= BIRMINGHAM_COORDINATES['latitude'] and vehicle_data["location"][1]
+                <= BIRMINGHAM_COORDINATES["longitude"]):
             print(f"vehicle_data['location'][0]: {vehicle_data['location'][0]}")
             print("Vehicle has reached Birmingham. Simulation ending...")
             break

@@ -5,8 +5,8 @@ from pyspark.sql.functions import from_json, col
 
 
 # For second argument of config in the SparkSession in main function go to mvnrepository.com, search for
-# "spark-sql-kafka", click on the spark version that you use and copy the groupId and artifactId, for the third argument
-# search hadoop-aws, for the 4-th one aws-java-sdk
+# "spark-sql-kafka", click on the spark version that you use and copy the groupId and artifactId,
+# for the third argument search hadoop-aws, for the 4-th one aws-java-sdk
 def main():
     spark = (SparkSession.builder
              .appName("SmartCityStreaming")
