@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 from weather_service import WeatherService
 import random
 
-
 weather_service = WeatherService()
 
 LONDON_COORDINATES = {
@@ -172,8 +171,7 @@ def simulate_journey(producer, device_id):
         vehicle_data = generate_vehicle_data(device_id)
         gps_data = generate_gps_data(device_id, vehicle_data["timestamp"])
         traffic_camera_data = generate_traffic_camera_data(device_id, vehicle_data["timestamp"],
-                                                           vehicle_data["location"],
-                                                           "Camera123")
+                                                           vehicle_data["location"], "Camera123")
         weather_data = generate_weather_data(device_id, vehicle_data["timestamp"], vehicle_data["location"])
         emergency_incident_data = generate_emergency_incident_data(device_id, vehicle_data["timestamp"],
                                                                    vehicle_data["location"])
@@ -207,4 +205,4 @@ if __name__ == "__main__":
         print("Simulation ended by the user")
     except Exception as e:
         traceback.print_exc()
-        # print(f"Unexpected Error occurred: {e}")
+        print(f"Unexpected Error occurred: {e}")
