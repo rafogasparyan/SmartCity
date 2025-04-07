@@ -90,7 +90,7 @@ def generate_emergency_incident_data(device_id, timestamp, location):
     }
 
 
-def generate_gps_data(device_id, timestamp, vehicle_type="private"):
+def generate_gps_data(device_id, timestamp, location, vehicle_type="private"):
     return {
         "id": uuid.uuid4(),
         "deviceID": device_id,
@@ -131,7 +131,7 @@ def generate_vehicle_data(device_id):
     location = simulate_vehicle_movement()
     return {
         "id": uuid.uuid4(),
-        "device_id": device_id,
+        "deviceId": device_id,
         "timestamp": get_next_time().isoformat(),
         "location": {"latitude": location["latitude"], "longitude": location["longitude"]},
         "speed": random.uniform(10, 40),

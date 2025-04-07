@@ -29,7 +29,7 @@ def main():
         StructField("deviceId", StringType(), True),
         StructField("timestamp", TimestampType(), True),
 #         StructField("location", StringType(), True),
-        StructField("location", ArrayType(DoubleType()), True)
+        StructField("location", ArrayType(DoubleType()), True),
         StructField("speed", DoubleType(), True),
         StructField("direction", StringType(), True),
         StructField("make", StringType(), True),
@@ -53,7 +53,7 @@ def main():
         StructField("timestamp", TimestampType(), True),
         StructField("cameraId", StringType(), True),
 #         StructField("location", StringType(), True),
-        StructField("location", ArrayType(DoubleType()), True)
+        StructField("location", ArrayType(DoubleType()), True),
         StructField("snapshot", StringType(), True),
     ])
 
@@ -62,7 +62,7 @@ def main():
         StructField("deviceId", StringType(), True),
         StructField("timestamp", TimestampType(), True),
 #         StructField("location", StringType(), True),
-        StructField("location", ArrayType(DoubleType()), True)
+        StructField("location", ArrayType(DoubleType()), True),
         StructField("temperature", DoubleType(), True),
         StructField("weatherCondition", StringType(), True),
         StructField("precipitation", DoubleType(), True),
@@ -78,8 +78,9 @@ def main():
         StructField("type", StringType(), True),
         StructField("timestamp", TimestampType(), True),
 #         StructField("location", StringType(), True),
-        StructField("location", ArrayType(DoubleType()), True)
-        StructField("status", DoubleType(), True),
+        StructField("location", ArrayType(DoubleType()), True),
+#         StructField("status", DoubleType(), True),
+        StructField("status", StringType(), True),
         StructField("description", StringType(), True),
     ])
 
