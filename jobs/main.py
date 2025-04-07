@@ -25,7 +25,8 @@ LATITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["latitude"] - LONDON_COORDINATES["l
 LONGITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["longitude"] - LONDON_COORDINATES["longitude"]) / 100
 
 # Environment variables for configuration
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+# KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "broker:29092")
 VEHICLE_TOPIC = os.getenv("VEHICLE_TOPIC", "vehicle_data")
 GPS_TOPIC = os.getenv("GPS_TOPIC", "gps_data")
 TRAFFIC_TOPIC = os.getenv("TRAFFIC_TOPIC", "traffic_data")
@@ -96,8 +97,8 @@ def generate_gps_data(device_id, timestamp, vehicle_type="private"):
         "timestamp": timestamp,
         "speed": random.uniform(0, 40),
         "direction": "North-East",
-        "vehicle_type": vehicle_type
-
+        "vehicle_type": vehicle_type,
+        "location": [location["latitude"], location["longitude"]]
     }
 
 
@@ -132,7 +133,7 @@ def generate_vehicle_data(device_id):
         "id": uuid.uuid4(),
         "device_id": device_id,
         "timestamp": get_next_time().isoformat(),
-        "location": (location["latitude"], location["longitude"]),
+        "location": {"latitude": location["latitude"], "longitude": location["longitude"]},
         "speed": random.uniform(10, 40),
         "direction": "North-East",
         "make": "BMW",
@@ -169,12 +170,13 @@ def produce_data_to_kafka(producer, topic, data):
 def simulate_journey(producer, device_id):
     while True:
         vehicle_data = generate_vehicle_data(device_id)
-        gps_data = generate_gps_data(device_id, vehicle_data["timestamp"])
+        gps_data = generate_gps_data(device_id, vehicle_data["timestamp"], vehicle_data["location"]) 
         traffic_camera_data = generate_traffic_camera_data(device_id, vehicle_data["timestamp"],
                                                            vehicle_data["location"], "Camera123")
         weather_data = generate_weather_data(device_id, vehicle_data["timestamp"], vehicle_data["location"])
         emergency_incident_data = generate_emergency_incident_data(device_id, vehicle_data["timestamp"],
                                                                    vehicle_data["location"])
+                                                              
 
         if (vehicle_data["location"][0] >= BIRMINGHAM_COORDINATES['latitude'] and vehicle_data["location"][1]
                 <= BIRMINGHAM_COORDINATES["longitude"]):
@@ -191,8 +193,17 @@ def simulate_journey(producer, device_id):
 
 
 if __name__ == "__main__":
+#     producer_config = {
+#         "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
+#         "error_cb": lambda err: print(f"Kafka error: {err}")
+#     }
+
     producer_config = {
         "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
+        "enable.idempotence": True,
+        "acks": "all",
+        "retries": 5,
+        "compression.type": "snappy",
         "error_cb": lambda err: print(f"Kafka error: {err}")
     }
 

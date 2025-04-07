@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession, DataFrame
 from config import configuration
 from pyspark.sql.types import StructType, StructField, TimestampType, StringType, DoubleType, IntegerType
 from pyspark.sql.functions import from_json, col
-
+from pyspark.sql.types import ArrayType
 
 # For second argument of config in the SparkSession in main function go to mvnrepository.com, search for
 # "spark-sql-kafka", click on the spark version that you use and copy the groupId and artifactId,
@@ -28,7 +28,8 @@ def main():
         StructField("id", StringType(), True),
         StructField("deviceId", StringType(), True),
         StructField("timestamp", TimestampType(), True),
-        StructField("location", StringType(), True),
+#         StructField("location", StringType(), True),
+        StructField("location", ArrayType(DoubleType()), True)
         StructField("speed", DoubleType(), True),
         StructField("direction", StringType(), True),
         StructField("make", StringType(), True),
@@ -51,7 +52,8 @@ def main():
         StructField("deviceId", StringType(), True),
         StructField("timestamp", TimestampType(), True),
         StructField("cameraId", StringType(), True),
-        StructField("location", StringType(), True),
+#         StructField("location", StringType(), True),
+        StructField("location", ArrayType(DoubleType()), True)
         StructField("snapshot", StringType(), True),
     ])
 
@@ -59,7 +61,8 @@ def main():
         StructField("id", StringType(), True),
         StructField("deviceId", StringType(), True),
         StructField("timestamp", TimestampType(), True),
-        StructField("location", StringType(), True),
+#         StructField("location", StringType(), True),
+        StructField("location", ArrayType(DoubleType()), True)
         StructField("temperature", DoubleType(), True),
         StructField("weatherCondition", StringType(), True),
         StructField("precipitation", DoubleType(), True),
@@ -74,7 +77,8 @@ def main():
         StructField("incidentId", StringType(), True),
         StructField("type", StringType(), True),
         StructField("timestamp", TimestampType(), True),
-        StructField("location", StringType(), True),
+#         StructField("location", StringType(), True),
+        StructField("location", ArrayType(DoubleType()), True)
         StructField("status", DoubleType(), True),
         StructField("description", StringType(), True),
     ])
@@ -99,6 +103,7 @@ def main():
                 .option("checkpointLocation", checkPointFolder)
                 .option("path", output)
                 .outputMode("append")
+                .option("failOnDataLoss", "false")
                 .start())
 
     vehicleDF = read_kafka_topic("vehicle_data", vehicleSchema).alias("vehicle")
