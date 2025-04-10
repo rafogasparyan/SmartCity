@@ -25,8 +25,8 @@ LATITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["latitude"] - LONDON_COORDINATES["l
 LONGITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["longitude"] - LONDON_COORDINATES["longitude"]) / 100
 
 # Environment variables for configuration
-# KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "broker:29092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+# KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "broker:29092")
 VEHICLE_TOPIC = os.getenv("VEHICLE_TOPIC", "vehicle_data")
 GPS_TOPIC = os.getenv("GPS_TOPIC", "gps_data")
 TRAFFIC_TOPIC = os.getenv("TRAFFIC_TOPIC", "traffic_data")
@@ -168,7 +168,9 @@ def produce_data_to_kafka(producer, topic, data):
 
 
 def simulate_journey(producer, device_id):
-    while True:
+    a = 0
+    while a < 5:
+        a = a + 1
         vehicle_data = generate_vehicle_data(device_id)
         gps_data = generate_gps_data(device_id, vehicle_data["timestamp"], vehicle_data["location"]) 
         traffic_camera_data = generate_traffic_camera_data(device_id, vehicle_data["timestamp"],
@@ -178,11 +180,12 @@ def simulate_journey(producer, device_id):
                                                                    vehicle_data["location"])
                                                               
 
-        if (vehicle_data["location"][0] >= BIRMINGHAM_COORDINATES['latitude'] and vehicle_data["location"][1]
-                <= BIRMINGHAM_COORDINATES["longitude"]):
-            print(f"vehicle_data['location'][0]: {vehicle_data['location'][0]}")
+        if (vehicle_data["location"]["latitude"] >= BIRMINGHAM_COORDINATES['latitude'] and 
+            vehicle_data["location"]["longitude"] <= BIRMINGHAM_COORDINATES["longitude"]):
+            print(f"vehicle_data['location']['latitude']: {vehicle_data['location']['latitude']}")
             print("Vehicle has reached Birmingham. Simulation ending...")
             break
+
 
         produce_data_to_kafka(producer, VEHICLE_TOPIC, vehicle_data)
         produce_data_to_kafka(producer, GPS_TOPIC, gps_data)
@@ -193,10 +196,6 @@ def simulate_journey(producer, device_id):
 
 
 if __name__ == "__main__":
-#     producer_config = {
-#         "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
-#         "error_cb": lambda err: print(f"Kafka error: {err}")
-#     }
 
     producer_config = {
         "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
