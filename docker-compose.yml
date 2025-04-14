@@ -108,7 +108,18 @@ services:
       - "8081:8080"
     networks:
       - datamasterylab    
-      
+  data-producer:
+    build:
+      context: .
+      dockerfile: jobs/Dockerfile
+    depends_on:
+      broker:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:29092
+    command: python main.py
+    networks:
+      - datamasterylab     
   route-optimizer:
     build: ./CSharpServices/RouteOptimizationService
     environment:
@@ -123,6 +134,8 @@ services:
           condition: service_healthy
       redis:
           condition: service_healthy
+      data-producer:
+        condition: service_completed_successfully
     dns: 8.8.8.8
     dns_search: .
 

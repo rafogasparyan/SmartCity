@@ -19,9 +19,13 @@ namespace RouteOptimizationService.Services
             var url = $"https://roads.googleapis.com/v1/snapToRoads?interpolate=true&path={path}&key={apiKey}";
 
             var response = await httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to call Google Roads API: {response.StatusCode}");
+            }
 
             var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(json);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             return JsonSerializer.Deserialize<SnapToRoadsResponse>(json, options)?.SnappedPoints;
         }

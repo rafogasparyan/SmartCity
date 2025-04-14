@@ -42,12 +42,14 @@ namespace RouteOptimizationService.Services
             consumer.Subscribe("gps_data");
             while (true)
             {
+                Console.WriteLine("---------------------------------------------");
                 var consumeResult = consumer.Consume(TimeSpan.FromSeconds(1));
                 if (consumeResult == null) continue;
 
                 try
                 {
                     var gpsData = JsonConvert.DeserializeObject<GpsData>(consumeResult.Message.Value);
+                    Console.WriteLine($"Received location: {gpsData.Location[0]}, {gpsData.Location[1]}");
                     await processor.HandleGpsDataAsync(gpsData);
                     consumer.Commit(consumeResult);
                 }
