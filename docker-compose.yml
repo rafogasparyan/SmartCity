@@ -138,6 +138,18 @@ services:
         condition: service_completed_successfully
     dns: 8.8.8.8
     dns_search: .
+  llm-driver-assistent:
+    build: ./LLMDriverAssistant
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=broker:29092
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      broker:
+        condition: service_healthy
+      data-producer:
+        condition: service_started
+    networks:
+      - datamasterylab
 
 
 
