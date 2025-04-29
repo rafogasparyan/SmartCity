@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from vector_store import get_vectordb
 from settings import KAFKA_BOOTSTRAP, GROUP_ID
+import redis
 
 topics_in = ["gps_data", "weather_data", "traffic_data", "emergency_data", "optimized_routes"]
 topic_out = "driver_alerts"
@@ -16,7 +17,7 @@ consumer = Consumer({
 consumer.subscribe(topics_in)
 
 producer = Producer({"bootstrap.servers": KAFKA_BOOTSTRAP})
-
+redis_client = redis.Redis(host="redis", port=6379, decode_responses=True)
 vectordb = get_vectordb()
 llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
 
@@ -92,11 +93,29 @@ while True:
     try:
         parsed = json.loads(clean)
         alert = {"deviceId": dev, **parsed, "ts": int(time.time()*1000)}
-        producer.produce(topic_out, key=dev, value=json.dumps(alert).encode())
-        producer.poll(0)
-        print(f"📤 Sent alert for {dev} to topic '{topic_out}'")
+        
+        key = f"alerts:{dev}"
+        redis_client.lpush(key, json.dumps(alert))
+        redis_client.ltrim(key, 0, 4)
+        
+        recent_alerts = redis_client.lrange(key, 1, 5)  # skip the one we just pushed at index 0
+        duplicate = False
+    
+        for prev_raw in recent_alerts:
+            prev = json.loads(prev_raw)
+            if prev["action"] == alert["action"] and abs(prev["target_speed"] - alert["target_speed"]) < 2:
+                print(f"⚠️ Skipping duplicate advice for {dev}")
+                duplicate = True
+                break
+    
+        if not duplicate:
+            producer.produce(topic_out, key=dev, value=json.dumps(alert).encode())
+            producer.poll(0)
+            print(f"📤 Sent alert for {dev} to topic '{topic_out}'")
+    
     except Exception as e:
         print(f"❌ Failed to parse LLM output as JSON: {e}")
         print(" Raw cleaned LLM output:")
         print(clean)
+
 

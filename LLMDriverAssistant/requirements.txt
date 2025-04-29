@@ -10,3 +10,4 @@ openai>=1.14.3
 tiktoken>=0.6.0
 confluent-kafka>=2.4.0
 python-dotenv>=1.0.1
+redis==5.0.1
