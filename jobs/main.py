@@ -127,20 +127,47 @@ def simulate_vehicle_movement():
     return start_location
 
 
+# def generate_vehicle_data(device_id):
+#     location = simulate_vehicle_movement()
+#     return {
+#         "id": uuid.uuid4(),
+#         "deviceId": device_id,
+#         "timestamp": get_next_time().isoformat(),
+#         "location": {"latitude": location["latitude"], "longitude": location["longitude"]},
+#         "speed": random.uniform(10, 40),
+#         "direction": "North-East",
+#         "make": "BMW",
+#         "model": "C500",
+#         "year": 2024,
+#         "fuelType": "Hybrid"
+#     }
 def generate_vehicle_data(device_id):
     location = simulate_vehicle_movement()
+
+    # Randomize car capabilities (for realism)
+    car_capabilities = random.choice([
+        {"make": "Tesla", "model": "Model 3", "year": 2023, "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True},
+        {"make": "Lada", "model": "2107", "year": 1987, "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False},
+        {"make": "Toyota", "model": "Corolla", "year": 2015, "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True},
+        {"make": "BMW", "model": "X5", "year": 2022, "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True},
+    ])
+
     return {
-        "id": uuid.uuid4(),
+        "id": str(uuid.uuid4()),
         "deviceId": device_id,
         "timestamp": get_next_time().isoformat(),
         "location": {"latitude": location["latitude"], "longitude": location["longitude"]},
         "speed": random.uniform(10, 40),
         "direction": "North-East",
-        "make": "BMW",
-        "model": "C500",
-        "year": 2024,
-        "fuelType": "Hybrid"
+        "make": car_capabilities["make"],
+        "model": car_capabilities["model"],
+        "year": car_capabilities["year"],
+        "fuelType": "Hybrid",  # you can randomize this too later if you want
+        "auto_braking_supported": car_capabilities["auto_braking_supported"],
+        "abs_supported": car_capabilities["abs_supported"],
+        "traction_control_supported": car_capabilities["traction_control_supported"]
     }
+
 
 
 def json_serializer(obj):

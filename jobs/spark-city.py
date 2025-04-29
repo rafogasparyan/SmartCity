@@ -35,7 +35,11 @@ def main():
         StructField("make", StringType(), True),
         StructField("model", StringType(), True),
         StructField("year", IntegerType(), True),
-        StructField("fuelType", StringType(), True)
+        StructField("fuelType", StringType(), True),
+        StructField("auto_braking_supported", BooleanType(), True),
+        StructField("abs_supported", BooleanType(), True),
+        StructField("traction_control_supported", BooleanType(), True),
+
     ])
 
     gpsSchema = StructType([
