@@ -23,21 +23,48 @@ llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
 
 qa = RetrievalQA.from_chain_type(llm, retriever=vectordb.as_retriever())
 
-state = {} 
+state = {}
+
 
 def build_prompt(s):
-    return dict(
-        speed=s.get("speed", 0),
-        limit=s.get("SpeedLimit", 90),
-        weather=s.get("weatherCondition", "Clear"),
-        road_cond=s.get("road_cond", "Normal"),
-        make=s.get("make", "Unknown"),
-        model=s.get("model", "Unknown"),
-        year=s.get("year", 1990),
-        auto_braking_supported=s.get("auto_braking_supported", False),
-        abs_supported=s.get("abs_supported", False),
-        traction_control_supported=s.get("traction_control_supported", False)
-    )
+    parts = []
+
+    # Vehicle identity and capabilities
+    parts.append(f"The vehicle is a {s.get('year', 'unknown')} {s.get('make', 'unknown')} {s.get('model', 'unknown')}.")
+    if s.get("auto_braking_supported"):
+        parts.append("It supports auto-braking.")
+    else:
+        parts.append("It does not support auto-braking.")
+    if s.get("abs_supported"):
+        parts.append("It has ABS braking system.")
+    else:
+        parts.append("It does not have ABS braking system.")
+    if s.get("traction_control_supported"):
+        parts.append("It has traction control system.")
+    else:
+        parts.append("It does not have traction control system.")
+
+    speed = round(s.get("speed", 0), 2)
+    limit = round(s.get("SpeedLimit", 90), 2)
+    parts.append(f"The car is moving at {speed} km/h where the speed limit is {limit} km/h.")
+
+    weather = s.get("weatherCondition", "Clear sky")
+    road = s.get("road_cond", "Normal")
+    parts.append(f"Weather is {weather}, and road condition is {road}.")
+
+    # Enhanced decision-making guidance
+    parts.append("Evaluate whether the vehicle should slow down, maintain speed, or speed up.")
+    parts.append(
+        "Only suggest to speed up if all conditions are excellent: clear weather, dry road, and vehicle has all modern safety features.")
+    parts.append(
+        "If current speed is significantly below the limit and conditions are good, modestly increasing speed may be safe.")
+    parts.append(
+        "If speed is too close to the limit or the conditions are risky (e.g., fog, snow, wet roads), suggest slowing down.")
+    parts.append(
+        "Return ONLY a JSON object with keys: action (slow_down / maintain_speed / speed_up), target_speed (int), and reason (string).")
+
+    return {"query": " ".join(parts)}
+
 
 while True:
     msg = consumer.poll(0.2)
@@ -62,18 +89,8 @@ while True:
         continue
 
     state[dev]["_ts"] = time.time()
-    prompt_vars = build_prompt(state[dev])
 
-    query = (
-        f"The vehicle is a {prompt_vars['year']} {prompt_vars['make']} {prompt_vars['model']}. "
-        f"It {'supports' if prompt_vars['auto_braking_supported'] else 'does not support'} auto-braking. "
-        f"It {'has' if prompt_vars['abs_supported'] else 'does not have'} ABS braking system. "
-        f"It {'has' if prompt_vars['traction_control_supported'] else 'does not have'} traction control system. "
-        f"The car is moving at {prompt_vars['speed']} km/h where speed limit is {prompt_vars['limit']} km/h. "
-        f"Weather is {prompt_vars['weather']}, road condition is {prompt_vars['road_cond']}. "
-        "Return ONLY a JSON object with keys: action, target_speed, reason. "
-        "⚠️ Never suggest to speed up unless the car and conditions are perfect."
-    )
+    query = build_prompt(state[dev])["query"]
 
     answer = qa.invoke({"query": query})["result"]
     print(f"💬 LLM recommendation: {answer}")

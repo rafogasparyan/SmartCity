@@ -2,6 +2,7 @@ import os
 import time
 import traceback
 import uuid
+import random
 
 from confluent_kafka import SerializingProducer
 import simplejson as json
@@ -20,6 +21,14 @@ BIRMINGHAM_COORDINATES = {
     "longitude": -1.8904
 }
 
+
+DANGEROUS_WEATHERS = [
+    ("Clear sky", 22, "Normal"),
+    ("Fog", 5, "Low-visibility"),
+    ("Heavy Rain", 12, "Wet"),
+    ("Snow", -1, "Snow-covered"),
+    ("Ice", -3, "Icy")
+]
 # Calculate the movement increment
 LATITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["latitude"] - LONDON_COORDINATES["latitude"]) / 100
 LONGITUDE_INCREMENT = (BIRMINGHAM_COORDINATES["longitude"] - LONDON_COORDINATES["longitude"]) / 100
@@ -95,7 +104,7 @@ def generate_gps_data(device_id, timestamp, location, vehicle_type="private"):
         "id": uuid.uuid4(),
         "deviceId": device_id,
         "timestamp": timestamp,
-        "speed": random.uniform(0, 40),
+        "speed": random.uniform(100, 140),
         "direction": "North-East",
         "vehicle_type": vehicle_type,
         "location": [location["latitude"], location["longitude"]]
@@ -127,20 +136,6 @@ def simulate_vehicle_movement():
     return start_location
 
 
-# def generate_vehicle_data(device_id):
-#     location = simulate_vehicle_movement()
-#     return {
-#         "id": uuid.uuid4(),
-#         "deviceId": device_id,
-#         "timestamp": get_next_time().isoformat(),
-#         "location": {"latitude": location["latitude"], "longitude": location["longitude"]},
-#         "speed": random.uniform(10, 40),
-#         "direction": "North-East",
-#         "make": "BMW",
-#         "model": "C500",
-#         "year": 2024,
-#         "fuelType": "Hybrid"
-#     }
 def generate_vehicle_data(device_id):
     location = simulate_vehicle_movement()
 
@@ -194,20 +189,21 @@ def produce_data_to_kafka(producer, topic, data):
     producer.flush()
 
 
-def simulate_journey(producer, device_id):
+
+def simulate_journey_original(producer, device_id):
     a = 0
     while a < 5:
         a = a + 1
         vehicle_data = generate_vehicle_data(device_id)
-        gps_data = generate_gps_data(device_id, vehicle_data["timestamp"], vehicle_data["location"]) 
+        gps_data = generate_gps_data(device_id, vehicle_data["timestamp"], vehicle_data["location"])
         traffic_camera_data = generate_traffic_camera_data(device_id, vehicle_data["timestamp"],
                                                            vehicle_data["location"], "Camera123")
         weather_data = generate_weather_data(device_id, vehicle_data["timestamp"], vehicle_data["location"])
         emergency_incident_data = generate_emergency_incident_data(device_id, vehicle_data["timestamp"],
                                                                    vehicle_data["location"])
-                                                              
 
-        if (vehicle_data["location"]["latitude"] >= BIRMINGHAM_COORDINATES['latitude'] and 
+
+        if (vehicle_data["location"]["latitude"] >= BIRMINGHAM_COORDINATES['latitude'] and
             vehicle_data["location"]["longitude"] <= BIRMINGHAM_COORDINATES["longitude"]):
             print(f"vehicle_data['location']['latitude']: {vehicle_data['location']['latitude']}")
             print("Vehicle has reached Birmingham. Simulation ending...")
@@ -220,6 +216,111 @@ def simulate_journey(producer, device_id):
         produce_data_to_kafka(producer, WEATHER_TOPIC, weather_data)
         produce_data_to_kafka(producer, EMERGENCY_TOPIC, emergency_incident_data)
         time.sleep(1)
+
+
+def simulate_journey(producer, device_id):
+    scenarios = [
+        {
+            "desc": "🚗 Lada in fog at high speed",
+            "vehicle": {
+                "make": "Lada", "model": "2107", "year": 1987,
+                "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False,
+                "speed": 80
+            },
+            "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
+            "incident": {"type": "None", "status": "Resolved"},
+            "speed_limit": 60
+        },
+        {
+            "desc": "🚘 Tesla in clear weather at low speed",
+            "vehicle": {
+                "make": "Tesla", "model": "Model 3", "year": 2023,
+                "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
+                "speed": 30
+            },
+            "weather": {"weatherCondition": "Clear sky", "temperature": 20, "windSpeed": 5},
+            "incident": {"type": "None", "status": "Resolved"},
+            "speed_limit": 90
+        },
+        {
+            "desc": "🚕 Toyota in snow near school zone",
+            "vehicle": {
+                "make": "Toyota", "model": "Corolla", "year": 2015,
+                "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
+                "speed": 40
+            },
+            "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
+            "incident": {"type": "Police", "status": "Active"},
+            "speed_limit": 30
+        },
+        {
+            "desc": "🚙 BMW on wet road with accident ahead",
+            "vehicle": {
+                "make": "BMW", "model": "X5", "year": 2022,
+                "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
+                "speed": 70
+            },
+            "weather": {"weatherCondition": "Rain", "temperature": 12, "windSpeed": 20},
+            "incident": {"type": "Accident", "status": "Active"},
+            "speed_limit": 60
+        }
+    ]
+
+    location = simulate_vehicle_movement()
+    timestamp = datetime.utcnow().isoformat()
+
+    for case in scenarios:
+        print(f"\n>>> Sending scenario: {case['desc']}")
+
+        # VEHICLE
+        vehicle_data = {
+            "id": str(uuid.uuid4()),
+            "deviceId": device_id,
+            "timestamp": timestamp,
+            "location": location,
+            "speed": case["vehicle"]["speed"],
+            "direction": "North-East",
+            "fuelType": "Hybrid",
+            **case["vehicle"]
+        }
+        produce_data_to_kafka(producer, VEHICLE_TOPIC, vehicle_data)
+
+        # GPS
+        gps_data = {
+            "id": str(uuid.uuid4()),
+            "deviceId": device_id,
+            "timestamp": timestamp,
+            "speed": case["vehicle"]["speed"],
+            "direction": "North-East",
+            "vehicle_type": "private",
+            "location": [location["latitude"], location["longitude"]],
+            "SpeedLimit": case["speed_limit"]
+        }
+        produce_data_to_kafka(producer, GPS_TOPIC, gps_data)
+
+        # WEATHER
+        weather_data = {
+            "id": str(uuid.uuid4()),
+            "deviceId": device_id,
+            "timestamp": timestamp,
+            "location": location,
+            **case["weather"]
+        }
+        produce_data_to_kafka(producer, WEATHER_TOPIC, weather_data)
+
+        # EMERGENCY
+        emergency_data = {
+            "id": str(uuid.uuid4()),
+            "deviceId": device_id,
+            "timestamp": timestamp,
+            "location": location,
+            "incidentId": str(uuid.uuid4()),
+            **case["incident"],
+            "description": "Test scenario incident"
+        }
+        produce_data_to_kafka(producer, EMERGENCY_TOPIC, emergency_data)
+
+        time.sleep(2)
 
 
 if __name__ == "__main__":
