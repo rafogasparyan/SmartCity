@@ -110,8 +110,8 @@ services:
       - datamasterylab    
   data-producer:
     build:
-      context: .
-      dockerfile: jobs/Dockerfile
+      context: ./jobs
+#      dockerfile: jobs/Dockerfile
     depends_on:
       broker:
         condition: service_healthy
@@ -152,6 +152,55 @@ services:
       - datamasterylab
     volumes:
       - ./LLMDriverAssistant/vectors:/app/vectors
+  driver-performance-evaluator:
+    build: ./driver_performance  # path where Dockerfile + service.py are
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=broker:29092
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROUP_ID=driver-perf-eval
+      - OPENAI_MODEL=gpt-4o-mini
+    depends_on:
+      broker:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - datamasterylab
+#  driver-perf-aggregator:
+#    build:
+#      context: ./jobs
+#    command: spark-submit spark_driver_performance.py
+#    depends_on:
+#      broker:
+#        condition: service_healthy
+#      data-producer:
+#        condition: service_completed_successfully
+#      spark-master:
+#        condition: service_started
+#    networks:
+#      - datamasterylab
+  driver-perf-aggregator:
+    image: bitnami/spark:latest
+    volumes:
+      - ./jobs:/opt/bitnami/spark/jobs
+    command: >
+      /opt/bitnami/spark/bin/spark-submit
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5
+      /opt/bitnami/spark/jobs/spark_driver_performance.py
+    depends_on:
+      broker:
+        condition: service_healthy
+      data-producer:
+        condition: service_completed_successfully
+      spark-master:
+        condition: service_started
+    networks:
+      - datamasterylab
+
+
+
+
+
 
 
 

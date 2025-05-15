@@ -1,0 +1,4 @@
+confluent-kafka>=2.4
+langchain-openai==0.1.7
+redis>=5.0
+simplejson==3.19.3
