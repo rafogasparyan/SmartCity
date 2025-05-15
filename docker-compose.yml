@@ -148,6 +148,8 @@ services:
         condition: service_healthy
       data-producer:
         condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - datamasterylab
     volumes:
