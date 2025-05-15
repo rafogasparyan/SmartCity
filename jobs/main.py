@@ -286,17 +286,21 @@ def simulate_journey(producer, device_id):
         produce_data_to_kafka(producer, VEHICLE_TOPIC, vehicle_data)
 
         # GPS
-        gps_data = {
-            "id": str(uuid.uuid4()),
-            "deviceId": device_id,
-            "timestamp": timestamp,
-            "speed": case["vehicle"]["speed"],
-            "direction": "North-East",
-            "vehicle_type": "private",
-            "location": [location["latitude"], location["longitude"]],
-            "SpeedLimit": case["speed_limit"]
-        }
-        produce_data_to_kafka(producer, GPS_TOPIC, gps_data)
+
+        for x in range(6):
+            gps_data = {
+                "id": str(uuid.uuid4()),
+                "deviceId": device_id,
+                "timestamp": timestamp,
+                "speed": case["vehicle"]["speed"],
+                "direction": "North-East",
+                "vehicle_type": "private",
+                "location": [location["latitude"], location["longitude"]],
+                "SpeedLimit": case["speed_limit"]
+            }
+            produce_data_to_kafka(producer, GPS_TOPIC, gps_data)
+
+
 
         # WEATHER
         weather_data = {
