@@ -230,40 +230,40 @@ def simulate_journey(producer, device_id):
             "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
             "incident": {"type": "None", "status": "Resolved"},
             "speed_limit": 60
-        },
-        {
-            "desc": "🚘 Tesla in clear weather at low speed",
-            "vehicle": {
-                "make": "Tesla", "model": "Model 3", "year": 2023,
-                "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
-                "speed": 30
-            },
-            "weather": {"weatherCondition": "Clear sky", "temperature": 20, "windSpeed": 5},
-            "incident": {"type": "None", "status": "Resolved"},
-            "speed_limit": 90
-        },
-        {
-            "desc": "🚕 Toyota in snow near school zone",
-            "vehicle": {
-                "make": "Toyota", "model": "Corolla", "year": 2015,
-                "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
-                "speed": 40
-            },
-            "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
-            "incident": {"type": "Police", "status": "Active"},
-            "speed_limit": 30
-        },
-        {
-            "desc": "🚙 BMW on wet road with accident ahead",
-            "vehicle": {
-                "make": "BMW", "model": "X5", "year": 2022,
-                "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
-                "speed": 70
-            },
-            "weather": {"weatherCondition": "Rain", "temperature": 12, "windSpeed": 20},
-            "incident": {"type": "Accident", "status": "Active"},
-            "speed_limit": 60
         }
+        # {
+        #     "desc": "🚘 Tesla in clear weather at low speed",
+        #     "vehicle": {
+        #         "make": "Tesla", "model": "Model 3", "year": 2023,
+        #         "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
+        #         "speed": 30
+        #     },
+        #     "weather": {"weatherCondition": "Clear sky", "temperature": 20, "windSpeed": 5},
+        #     "incident": {"type": "None", "status": "Resolved"},
+        #     "speed_limit": 90
+        # },
+        # {
+        #     "desc": "🚕 Toyota in snow near school zone",
+        #     "vehicle": {
+        #         "make": "Toyota", "model": "Corolla", "year": 2015,
+        #         "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
+        #         "speed": 40
+        #     },
+        #     "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
+        #     "incident": {"type": "Police", "status": "Active"},
+        #     "speed_limit": 30
+        # },
+        # {
+        #     "desc": "🚙 BMW on wet road with accident ahead",
+        #     "vehicle": {
+        #         "make": "BMW", "model": "X5", "year": 2022,
+        #         "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
+        #         "speed": 70
+        #     },
+        #     "weather": {"weatherCondition": "Rain", "temperature": 12, "windSpeed": 20},
+        #     "incident": {"type": "Accident", "status": "Active"},
+        #     "speed_limit": 60
+        # }
     ]
 
     location = simulate_vehicle_movement()
