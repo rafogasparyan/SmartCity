@@ -68,8 +68,11 @@ def build_prompt(s):
 
 while True:
     msg = consumer.poll(0.2)
+
     if not msg or msg.error():
-        continue
+        continue  # avoid NoneType errors
+
+    print(f"📨 Incoming Kafka message on topic {msg.topic()}")
 
     try:
         data = json.loads(msg.value())
@@ -110,12 +113,15 @@ while True:
     try:
         parsed = json.loads(clean)
         alert = {"deviceId": dev, **parsed, "ts": int(time.time()*1000)}
-        
+
+        print(f"✅ Parsed LLM alert: {alert}")
+
         key = f"alerts:{dev}"
         redis_client.lpush(key, json.dumps(alert))
         redis_client.ltrim(key, 0, 4)
-        
-        recent_alerts = redis_client.lrange(key, 1, 5)  # skip the one we just pushed at index 0
+
+        recent_alerts = redis_client.lrange(key, 1, 4)  # index 1 to 4 is 4 alerts
+
         duplicate = False
     
         for prev_raw in recent_alerts:
