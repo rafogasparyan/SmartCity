@@ -21,7 +21,17 @@ class Location(BaseModel):
     latitude: float
     longitude: float
 
-class SnappedPoint(BaseModel):
+class RawSnappedPoint(BaseModel):
     location: Location
-    placeId: Optional[str]
-    originalIndex: Optional[int]
+    place_id: Optional[str] = Field(None, alias="placeId")
+    original_index: Optional[int] = Field(None, alias="originalIndex")
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+        extra = "ignore"
+
+# Used after assigning speed limit
+class SnappedPoint(RawSnappedPoint):
+    speed_limit: Optional[float] = None
+
