@@ -94,7 +94,7 @@ metrics = (joined
                F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit"))
            .selectExpr(
                "deviceId",
-               "concat_ws('/', date_format(w.start, 'yyyy-MM-dd''T''HH:mm:ss'), date_format(w.end, 'yyyy-MM-dd''T''HH:mm:ss')) as period",
+                "concat_ws('/', date_format(w.start, 'yyyy-MM-dd[T]HH:mm:ss'), date_format(w.end, 'yyyy-MM-dd[T]HH:mm:ss')) as period",
                "avg_speed_over_limit",
                "overspeed_events",
                "max_speed_over_limit"))
