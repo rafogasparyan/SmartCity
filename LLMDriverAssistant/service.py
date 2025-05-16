@@ -12,7 +12,7 @@ topic_out = "driver_alerts"
 consumer = Consumer({
     "bootstrap.servers": KAFKA_BOOTSTRAP,
     "group.id": GROUP_ID,
-    "auto.offset.reset": "latest"
+    "auto.offset.reset": "earliest"
 })
 consumer.subscribe(topics_in)
 
