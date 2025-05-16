@@ -120,25 +120,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: broker:29092
     command: python main.py
     networks:
-      - datamasterylab     
-#  route-optimizer:
-#    build: ./CSharpServices/RouteOptimizationService
-#    environment:
-#      - KAFKA_BOOTSTRAP_SERVERS=broker:29092
-#      - RUN_SAMPLE_TEST=false
-#      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-#      - REDIS_CONNECTION=redis:6379
-#    networks:
-#      - datamasterylab
-#    depends_on:
-#      broker:
-#          condition: service_healthy
-#      redis:
-#          condition: service_healthy
-#      data-producer:
-#        condition: service_completed_successfully
-#    dns: 8.8.8.8
-#    dns_search: .
+      - datamasterylab
   llm-driver-assistant:
     build: ./LLMDriverAssistant
     environment:
@@ -156,7 +138,7 @@ services:
     volumes:
       - ./LLMDriverAssistant/vectors:/app/vectors
   driver-performance-evaluator:
-    build: ./driver_performance  # path where Dockerfile + service.py are
+    build: ./driver_performance
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=broker:29092
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -169,19 +151,6 @@ services:
         condition: service_healthy
     networks:
       - datamasterylab
-#  driver-perf-aggregator:
-#    build:
-#      context: ./jobs
-#    command: spark-submit spark_driver_performance.py
-#    depends_on:
-#      broker:
-#        condition: service_healthy
-#      data-producer:
-#        condition: service_completed_successfully
-#      spark-master:
-#        condition: service_started
-#    networks:
-#      - datamasterylab
   driver-perf-aggregator:
     image: bitnami/spark:latest
     volumes:
@@ -199,6 +168,13 @@ services:
         condition: service_started
     networks:
       - datamasterylab
+    healthcheck:
+      test: [ "CMD", "python", "--version" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
   route-optimizer:
     build:
       context: ./route_optimizer

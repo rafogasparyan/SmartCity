@@ -1,18 +1,24 @@
 """
 Driver-Performance Evaluator (Strict Limit)
 ––––––––––––––––––––––––––––––––––––––––––––
-• Consumes  : driver_performance_summaries
+• Consumes  : driver_performance_metrics
 • Produces  : driver_performance_evaluations
 • LLM model : GPT-4o via LangChain
 • LLM limit : 2 total requests per run (strict)
 """
 
-import os, json, time, signal, sys, re
+import os
+import json
+import time
+import signal
+import sys
+import re
 from confluent_kafka import Consumer, Producer, KafkaException
 from langchain_openai import ChatOpenAI
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 # --------------------------------------------------------------------------- #
-# 1 . Environment & constants
+# 1. Environment & constants
 # --------------------------------------------------------------------------- #
 BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "broker:29092")
 GROUP_ID = os.getenv("GROUP_ID", "driver-perf-eval")
@@ -22,17 +28,17 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 BATCH_SIZE = 10
 MAX_CALLS = 2
-llm_calls = 0  # global call counter
+llm_calls = 0
 
 llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.2)
 
 # --------------------------------------------------------------------------- #
-# 2 . Kafka setup
+# 2. Kafka setup
 # --------------------------------------------------------------------------- #
 consumer_cfg = {
     "bootstrap.servers": BOOTSTRAP,
     "group.id": GROUP_ID,
-    "auto.offset.reset": "latest",
+    "auto.offset.reset": "earliest"  # replay data for testing
 }
 producer_cfg = {"bootstrap.servers": BOOTSTRAP}
 
@@ -49,7 +55,7 @@ else:
     raise RuntimeError("❌ Kafka not available after multiple retries.")
 
 # --------------------------------------------------------------------------- #
-# 3 . Helpers
+# 3. Helpers
 # --------------------------------------------------------------------------- #
 def strip_code_fence(txt: str) -> str:
     return re.sub(r"```(json)?|```", "", txt, flags=re.IGNORECASE).strip()
@@ -57,10 +63,15 @@ def strip_code_fence(txt: str) -> str:
 def graceful_shutdown(*_):
     print("Shutting down …")
     consumer.close()
+    producer.flush()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, graceful_shutdown)
 signal.signal(signal.SIGTERM, graceful_shutdown)
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+def get_llm_response(prompt: str) -> str:
+    return llm.invoke(prompt).content
 
 def create_prompt_for_batch(batch):
     prompt = """You are a strict driving-style assessor. Each entry below contains JSON driving metrics. 
@@ -91,7 +102,7 @@ Input metrics:\n\n"""
     return prompt
 
 # --------------------------------------------------------------------------- #
-# 4 . Main loop
+# 4. Main loop
 # --------------------------------------------------------------------------- #
 print("🚀 Driver-Performance Evaluator started.")
 batch_buffer = []
@@ -115,43 +126,36 @@ while True:
     if len(batch_buffer) < BATCH_SIZE:
         continue
 
-    mid = BATCH_SIZE // 2
-    batches = [batch_buffer[:mid], batch_buffer[mid:]]
+    prompt = create_prompt_for_batch(batch_buffer)
+    try:
+        raw = get_llm_response(prompt)
+        llm_calls += 1
+        clean = strip_code_fence(raw)
+        evaluations = json.loads(clean)
 
-    for batch in batches:
-        if llm_calls >= MAX_CALLS:
-            print("🚫 Max LLM request limit reached.")
-            break
+        for evaluation in evaluations:
+            idx = evaluation["index"]
+            metric = batch_buffer[idx]
 
-        prompt = create_prompt_for_batch(batch)
+            evaluation.update(
+                deviceId=metric["deviceId"],
+                period=metric["period"],
+                ts=int(time.time() * 1000),
+            )
 
-        try:
-            raw = llm.invoke(prompt).content
-            llm_calls += 1
-            clean = strip_code_fence(raw)
-            evaluations = json.loads(clean)
+            print("🔎 Evaluation JSON:", json.dumps(evaluation, indent=2))
 
-            for evaluation in evaluations:
-                idx = evaluation["index"]
-                metric = batch[idx]
+            producer.produce(
+                OUT_TP,
+                key=metric["deviceId"],
+                value=json.dumps(evaluation).encode(),
+            )
+            print(f"✅ Published: {metric['deviceId']} → {evaluation['rating']}")
 
-                evaluation.update(
-                    deviceId=metric["deviceId"],
-                    period=metric["period"],
-                    ts=int(time.time() * 1000),
-                )
+        producer.flush()
 
-                producer.produce(
-                    OUT_TP,
-                    key=metric["deviceId"],
-                    value=json.dumps(evaluation).encode(),
-                )
-                print(f"✅ Published: {metric['deviceId']} → {evaluation['rating']}")
-
-            producer.poll(0)
-
-        except Exception as exc:
-            print("❌ Failed to handle LLM output:", exc)
-            print("Raw:", raw if "raw" in locals() else "(none)")
+    except Exception as exc:
+        print("❌ Failed to handle LLM output:", exc)
+        print("Raw:", raw if "raw" in locals() else "(none)")
 
     batch_buffer.clear()

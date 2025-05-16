@@ -58,7 +58,7 @@ speed_limits = (spark.readStream.format("kafka")
     .selectExpr("CAST(value AS STRING) as json")
     .withColumn("d", F.from_json("json", schema))
     .select(
-        F.col("d.deviceID").alias("deviceId"),
+        F.col("d.deviceID").alias("deviceId_sl"),
         F.col("d.SpeedLimit"),
         F.col("d.timestamp").alias("Timestamp")
     )
@@ -95,7 +95,7 @@ speed_limits = speed_limits.withColumn("event_time_speed_unix", F.unix_timestamp
 joined = gps.join(
     speed_limits,
     on=(
-        (gps.deviceId == speed_limits.deviceId) &
+        (gps.deviceId == speed_limits.deviceId_sl) &
         (F.col("event_time").between(
             F.col("event_time_speed") - F.expr("INTERVAL 5 MINUTES"),
             F.col("event_time_speed") + F.expr("INTERVAL 5 MINUTES")
@@ -114,41 +114,66 @@ joined.withColumn("DEBUG_TAG", F.lit("🚦 JOINED ROW")) \
 
 
 # Aggregate metrics
+# metrics = (joined
+#            .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit"), 1).otherwise(0))
+#            .groupBy(
+#                F.window("event_time", "1 hour").alias("w"),
+#                gps.deviceId)
+#            .agg(
+#                F.avg(F.col("speed") - F.col("SpeedLimit")).alias("avg_speed_over_limit"),
+#                F.sum("over").alias("overspeed_events"),
+#                F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit"))
+#             .selectExpr(
+#                 "deviceId",
+#                 "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
+#                 "avg_speed_over_limit",
+#                 "overspeed_events",
+#                 "max_speed_over_limit"
+#             )
+#         )
+
 metrics = (joined
-           .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit") + 5, 1).otherwise(0))
+           .filter(F.col("SpeedLimit").isNotNull())
+           .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit"), 1).otherwise(0))
            .groupBy(
                F.window("event_time", "1 hour").alias("w"),
-               gps.deviceId)
+               "deviceId"  # Now safe to use
+           )
            .agg(
                F.avg(F.col("speed") - F.col("SpeedLimit")).alias("avg_speed_over_limit"),
                F.sum("over").alias("overspeed_events"),
-               F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit"))
-            .selectExpr(
-                "deviceId",
-                "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
-                "avg_speed_over_limit",
-                "overspeed_events",
-                "max_speed_over_limit"
-            )
-        )
+               F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit")
+           )
+           .selectExpr(
+               "deviceId",
+               "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
+               "avg_speed_over_limit",
+               "overspeed_events",
+               "max_speed_over_limit"
+           )
+)
 
 
-metrics_debug = metrics.withColumn("DEBUG_TAG", F.lit("📊 FINAL METRICS"))
-metrics_debug.writeStream \
+
+
+# Add debug column
+metrics_with_debug = metrics.withColumn("DEBUG_TAG", F.lit("📊 FINAL METRICS"))
+
+# ✅ Write to console (for monitoring)
+metrics_with_debug.writeStream \
     .format("console") \
     .option("truncate", False) \
     .outputMode("append") \
     .start()
 
-# Write to Kafka
-query = (metrics
-         .selectExpr("to_json(struct(*)) AS value")
-         .writeStream
-         .format("kafka")
-         .option("kafka.bootstrap.servers", "broker:29092")
-         .option("topic", "driver_performance_metrics")
-         .option("checkpointLocation", "/tmp/chk_driver_perf")
-         .outputMode("append")
-         .start())
-
-query.awaitTermination()
+# ✅ Write to Kafka (drop debug tag before sending)
+metrics_with_debug.drop("DEBUG_TAG") \
+    .selectExpr("to_json(struct(*)) AS value") \
+    .writeStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "broker:29092") \
+    .option("topic", "driver_performance_metrics") \
+    .option("checkpointLocation", "/tmp/chk_driver_perf") \
+    .outputMode("append") \
+    .start() \
+    .awaitTermination()
