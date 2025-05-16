@@ -39,7 +39,7 @@ gps = (spark.readStream.format("kafka")
        .select(F.from_json("json", "deviceId STRING, speed DOUBLE, timestamp STRING").alias("d"))
        .select("d.*")
        .withColumn("event_time", F.to_timestamp("timestamp"))
-       .withWatermark("event_time", "5 minutes"))
+       .withWatermark("event_time", "10 seconds"))
 
 
 gps_debug = gps.withColumn("DEBUG_TAG", F.lit("📡 GPS RAW"))
@@ -133,10 +133,9 @@ joined.withColumn("DEBUG_TAG", F.lit("🚦 JOINED ROW")) \
 #         )
 
 metrics = (joined
-           .filter(F.col("SpeedLimit").isNotNull())
            .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit"), 1).otherwise(0))
            .groupBy(
-               F.window("event_time", "1 hour").alias("w"),
+               F.window("event_time", "1 minute").alias("w"),
                "deviceId"  # Now safe to use
            )
            .agg(

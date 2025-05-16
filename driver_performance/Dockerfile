@@ -5,4 +5,5 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY service.py ./
-CMD ["python", "service.py"]
+CMD ["python", "-u", "service.py"]
+

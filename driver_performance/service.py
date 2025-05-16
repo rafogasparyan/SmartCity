@@ -26,7 +26,7 @@ METRICS_TP = "driver_performance_metrics"
 OUT_TP = "driver_performance_evaluations"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-BATCH_SIZE = 10
+BATCH_SIZE = 1
 MAX_CALLS = 2
 llm_calls = 0
 
@@ -113,7 +113,13 @@ while True:
         break
 
     msg = consumer.poll(1.0)
+    print("Polling Kafka…")
+
     if msg is None or msg.error():
+        print("📭 No message received.")
+        continue
+    if msg.error():
+        print(f"❌ Kafka error: {msg.error()}")
         continue
 
     try:

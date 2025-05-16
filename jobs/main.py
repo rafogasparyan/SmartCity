@@ -220,17 +220,17 @@ def simulate_journey_original(producer, device_id):
 
 def simulate_journey(producer, device_id):
     scenarios = [
-        {
-            "desc": "🚗 Lada in fog at high speed",
-            "vehicle": {
-                "make": "Lada", "model": "2107", "year": 1987,
-                "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False,
-                "speed": 80
-            },
-            "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
-            "incident": {"type": "None", "status": "Resolved"},
-            "speed_limit": 60
-        }
+        # {
+        #     "desc": "🚗 Lada in fog at high speed",
+        #     "vehicle": {
+        #         "make": "Lada", "model": "2107", "year": 1987,
+        #         "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False,
+        #         "speed": 80
+        #     },
+        #     "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
+        #     "incident": {"type": "None", "status": "Resolved"},
+        #     "speed_limit": 60
+        # },
         # {
         #     "desc": "🚘 Tesla in clear weather at low speed",
         #     "vehicle": {
@@ -242,17 +242,17 @@ def simulate_journey(producer, device_id):
         #     "incident": {"type": "None", "status": "Resolved"},
         #     "speed_limit": 90
         # },
-        # {
-        #     "desc": "🚕 Toyota in snow near school zone",
-        #     "vehicle": {
-        #         "make": "Toyota", "model": "Corolla", "year": 2015,
-        #         "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
-        #         "speed": 40
-        #     },
-        #     "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
-        #     "incident": {"type": "Police", "status": "Active"},
-        #     "speed_limit": 30
-        # },
+        {
+            "desc": "🚕 Toyota in snow near school zone",
+            "vehicle": {
+                "make": "Toyota", "model": "Corolla", "year": 2015,
+                "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
+                "speed": 40
+            },
+            "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
+            "incident": {"type": "Police", "status": "Active"},
+            "speed_limit": 30
+        },
         # {
         #     "desc": "🚙 BMW on wet road with accident ahead",
         #     "vehicle": {
