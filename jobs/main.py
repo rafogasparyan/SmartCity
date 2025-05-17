@@ -218,65 +218,48 @@ def simulate_journey_original(producer, device_id):
         time.sleep(1)
 
 
+from datetime import datetime, timedelta
+
+from datetime import datetime, timedelta
+
 def simulate_journey(producer, device_id):
     scenarios = [
-        # {
-        #     "desc": "🚗 Lada in fog at high speed",
-        #     "vehicle": {
-        #         "make": "Lada", "model": "2107", "year": 1987,
-        #         "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False,
-        #         "speed": 80
-        #     },
-        #     "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
-        #     "incident": {"type": "None", "status": "Resolved"},
-        #     "speed_limit": 60
-        # },
-        # {
-        #     "desc": "🚘 Tesla in clear weather at low speed",
-        #     "vehicle": {
-        #         "make": "Tesla", "model": "Model 3", "year": 2023,
-        #         "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
-        #         "speed": 30
-        #     },
-        #     "weather": {"weatherCondition": "Clear sky", "temperature": 20, "windSpeed": 5},
-        #     "incident": {"type": "None", "status": "Resolved"},
-        #     "speed_limit": 90
-        # },
         {
-            "desc": "🚕 Toyota in snow near school zone",
+            "desc": "🚗 Lada in fog at high speed",
             "vehicle": {
-                "make": "Toyota", "model": "Corolla", "year": 2015,
-                "auto_braking_supported": False, "abs_supported": True, "traction_control_supported": True,
-                "speed": 40
+                "make": "Lada", "model": "2107", "year": 1987,
+                "auto_braking_supported": False, "abs_supported": False, "traction_control_supported": False,
+                "speed": 85  # overspeed
             },
-            "weather": {"weatherCondition": "Snow", "temperature": -1, "windSpeed": 15},
-            "incident": {"type": "Police", "status": "Active"},
-            "speed_limit": 30
+            "weather": {"weatherCondition": "Fog", "temperature": 5, "windSpeed": 10},
+            "incident": {"type": "None", "status": "Resolved"},
+            "speed_limit": 60
         },
-        # {
-        #     "desc": "🚙 BMW on wet road with accident ahead",
-        #     "vehicle": {
-        #         "make": "BMW", "model": "X5", "year": 2022,
-        #         "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
-        #         "speed": 70
-        #     },
-        #     "weather": {"weatherCondition": "Rain", "temperature": 12, "windSpeed": 20},
-        #     "incident": {"type": "Accident", "status": "Active"},
-        #     "speed_limit": 60
-        # }
+        {
+            "desc": "🚙 BMW on wet road with accident ahead",
+            "vehicle": {
+                "make": "BMW", "model": "X5", "year": 2022,
+                "auto_braking_supported": True, "abs_supported": True, "traction_control_supported": True,
+                "speed": 100  # overspeed
+            },
+            "weather": {"weatherCondition": "Rain", "temperature": 12, "windSpeed": 20},
+            "incident": {"type": "Accident", "status": "Active"},
+            "speed_limit": 70
+        }
     ]
-
-    location = simulate_vehicle_movement()
-    timestamp = datetime.utcnow().isoformat()
 
     for case in scenarios:
         print(f"\n>>> Sending scenario: {case['desc']}")
+        location = simulate_vehicle_movement()
+
+        # ⏪ Send timestamps 40 seconds in the past
+        base_time = datetime.utcnow() - timedelta(seconds=40)
 
         # VEHICLE
         vehicle_data = {
             "id": str(uuid.uuid4()),
             "deviceId": device_id,
-            "timestamp": timestamp,
+            "timestamp": base_time.isoformat(),
             "location": location,
             "speed": case["vehicle"]["speed"],
             "direction": "North-East",
@@ -285,13 +268,13 @@ def simulate_journey(producer, device_id):
         }
         produce_data_to_kafka(producer, VEHICLE_TOPIC, vehicle_data)
 
-        # GPS
-
-        for x in range(6):
+        # GPS — simulate burst within same old window
+        for i in range(6):
+            gps_time = (base_time + timedelta(seconds=i)).isoformat()
             gps_data = {
                 "id": str(uuid.uuid4()),
                 "deviceId": device_id,
-                "timestamp": timestamp,
+                "timestamp": gps_time,
                 "speed": case["vehicle"]["speed"],
                 "direction": "North-East",
                 "vehicle_type": "private",
@@ -299,14 +282,13 @@ def simulate_journey(producer, device_id):
                 "SpeedLimit": case["speed_limit"]
             }
             produce_data_to_kafka(producer, GPS_TOPIC, gps_data)
-
-
+            time.sleep(0.2)
 
         # WEATHER
         weather_data = {
             "id": str(uuid.uuid4()),
             "deviceId": device_id,
-            "timestamp": timestamp,
+            "timestamp": base_time.isoformat(),
             "location": location,
             **case["weather"]
         }
@@ -316,7 +298,7 @@ def simulate_journey(producer, device_id):
         emergency_data = {
             "id": str(uuid.uuid4()),
             "deviceId": device_id,
-            "timestamp": timestamp,
+            "timestamp": base_time.isoformat(),
             "location": location,
             "incidentId": str(uuid.uuid4()),
             **case["incident"],
@@ -324,7 +306,39 @@ def simulate_journey(producer, device_id):
         }
         produce_data_to_kafka(producer, EMERGENCY_TOPIC, emergency_data)
 
-        time.sleep(2)
+        time.sleep(1)
+
+    print("✅ Journey simulation complete. Now waiting 30s for metrics to finalize...")
+
+    # ✅ Inject a late GPS + SpeedLimit record to trigger watermark-based window finalization
+    late_time = datetime.utcnow() + timedelta(seconds=30)
+    late_timestamp = late_time.isoformat()
+
+    # Use the last known location from previous scenario
+    late_gps = {
+        "id": str(uuid.uuid4()),
+        "deviceId": device_id,
+        "timestamp": late_timestamp,
+        "speed": 50,
+        "direction": "North-East",
+        "vehicle_type": "private",
+        "location": [location["latitude"], location["longitude"]],
+        "SpeedLimit": 60
+    }
+    produce_data_to_kafka(producer, GPS_TOPIC, late_gps)
+
+    late_speed = {
+        "id": str(uuid.uuid4()),
+        "deviceId": device_id,
+        "timestamp": late_timestamp,
+        "SpeedLimit": 60
+    }
+    produce_data_to_kafka(producer, "optimized_routes", late_speed)
+
+    print("⏳ Late record sent to push watermark and close window...")
+    time.sleep(20)  # Give Spark time
+
+
 
 
 if __name__ == "__main__":

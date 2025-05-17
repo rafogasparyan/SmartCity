@@ -27,7 +27,7 @@ OUT_TP = "driver_performance_evaluations"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 BATCH_SIZE = 1
-MAX_CALLS = 2
+MAX_CALLS = 5
 llm_calls = 0
 
 llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.2)
@@ -93,7 +93,7 @@ Return ONLY valid JSON list like:
     "weaknesses": "<string>",
     "improvement_tips": ["<tip1>", "<tip2>"]
   },
-  ...
+  
 ]
 
 Input metrics:\n\n"""

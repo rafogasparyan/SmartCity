@@ -1,17 +1,6 @@
 from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import StructType, StringType, DoubleType
 
-# spark = (SparkSession.builder
-#     .appName("driver-performance-aggregator")
-#     .config("spark.jars.packages",
-#             "org.apache.spark:spark-sql-kafka-0-10_2.13:3.5.0")  # ← this is the missing connector
-#     .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true")
-#     .getOrCreate())
-
-# spark = (SparkSession.builder
-#     .appName("driver-performance-aggregator")
-#     .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true")
-#     .getOrCreate())
 
 spark = (SparkSession.builder
     .appName("driver-performance-aggregator")
@@ -26,7 +15,6 @@ schema = StructType() \
     .add("deviceID", StringType()) \
     .add("SpeedLimit", DoubleType()) \
     .add("timestamp", StringType())
-
 
 
 # Read GPS stream with watermark
@@ -63,7 +51,7 @@ speed_limits = (spark.readStream.format("kafka")
         F.col("d.timestamp").alias("Timestamp")
     )
     .withColumn("event_time_speed", F.to_timestamp("Timestamp"))
-    .withWatermark("event_time_speed", "5 minutes"))
+    .withWatermark("event_time_speed", "30 seconds"))
 
 
 sl_debug = speed_limits.withColumn("DEBUG_TAG", F.lit("🛣️ SPEEDLIMIT RAW"))
@@ -104,7 +92,7 @@ joined = gps.join(
     how="left"
 )
 
-# Add debug tag
+# Debug: Joined rows
 joined.withColumn("DEBUG_TAG", F.lit("🚦 JOINED ROW")) \
     .writeStream \
     .format("console") \
@@ -112,62 +100,48 @@ joined.withColumn("DEBUG_TAG", F.lit("🚦 JOINED ROW")) \
     .outputMode("append") \
     .start()
 
+# Schema check
+joined.printSchema()
 
-# Aggregate metrics
-# metrics = (joined
-#            .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit"), 1).otherwise(0))
-#            .groupBy(
-#                F.window("event_time", "1 hour").alias("w"),
-#                gps.deviceId)
-#            .agg(
-#                F.avg(F.col("speed") - F.col("SpeedLimit")).alias("avg_speed_over_limit"),
-#                F.sum("over").alias("overspeed_events"),
-#                F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit"))
-#             .selectExpr(
-#                 "deviceId",
-#                 "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
-#                 "avg_speed_over_limit",
-#                 "overspeed_events",
-#                 "max_speed_over_limit"
-#             )
-#         )
-
-metrics = (joined
-           .withColumn("over", F.when(F.col("speed") > F.col("SpeedLimit"), 1).otherwise(0))
-           .groupBy(
-               F.window("event_time", "1 minute").alias("w"),
-               "deviceId"  # Now safe to use
-           )
-           .agg(
-               F.avg(F.col("speed") - F.col("SpeedLimit")).alias("avg_speed_over_limit"),
-               F.sum("over").alias("overspeed_events"),
-               F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit")
-           )
-           .selectExpr(
-               "deviceId",
-               "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
-               "avg_speed_over_limit",
-               "overspeed_events",
-               "max_speed_over_limit"
-           )
-)
-
-
-
-
-# Add debug column
-metrics_with_debug = metrics.withColumn("DEBUG_TAG", F.lit("📊 FINAL METRICS"))
-
-# ✅ Write to console (for monitoring)
-metrics_with_debug.writeStream \
+# Debug: Filtered overspeed events
+filtered = joined.filter(F.col("speed") > F.col("SpeedLimit"))
+filtered.withColumn("DEBUG_TAG", F.lit("⚠️ FILTERED")) \
+    .writeStream \
     .format("console") \
     .option("truncate", False) \
     .outputMode("append") \
     .start()
 
-# ✅ Write to Kafka (drop debug tag before sending)
-metrics_with_debug.drop("DEBUG_TAG") \
-    .selectExpr("to_json(struct(*)) AS value") \
+# ✅ Metrics generation (dummy metrics for evaluator)
+metrics = (filtered
+    .groupBy(
+        F.window("event_time", "1 minute").alias("w"),
+        "deviceId"
+    )
+    .agg(
+        F.avg(F.col("speed") - F.col("SpeedLimit")).alias("avg_speed_over_limit"),
+        F.count("*").alias("overspeed_events"),
+        F.max(F.col("speed") - F.col("SpeedLimit")).alias("max_speed_over_limit")
+    )
+    .selectExpr(
+        "deviceId",
+        "concat_ws('/', date_format(w.start, \"yyyy-MM-dd'T'HH:mm:ss\"), date_format(w.end, \"yyyy-MM-dd'T'HH:mm:ss\")) as period",
+        "avg_speed_over_limit",
+        "overspeed_events",
+        "max_speed_over_limit"
+    )
+)
+
+# Debug: Print metrics
+metrics.withColumn("DEBUG_TAG", F.lit("📊 FINAL METRICS")) \
+    .writeStream \
+    .format("console") \
+    .option("truncate", False) \
+    .outputMode("append") \
+    .start()
+
+# ✅ Trigger Kafka topic for evaluator
+metrics.selectExpr("to_json(struct(*)) AS value") \
     .writeStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "broker:29092") \

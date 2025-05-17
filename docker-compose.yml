@@ -192,15 +192,6 @@ services:
     networks:
       - datamasterylab
 
-
-
-
-
-
-
-
-
-
 networks:
   datamasterylab:
 
