@@ -63,6 +63,9 @@ The system consists of the following core components:
 
 ---
 
+![Architecture Diagram](images/architecture.jpg)
+
+
 ## Technologies Used
 
 * Apache Kafka
@@ -94,9 +97,7 @@ The system consists of the following core components:
 
 ---
 
-
----
-## TO RUN THE APP
+## To run the project
 
 docker-compose up --build
 
